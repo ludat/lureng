@@ -1,9 +1,11 @@
 [package]
-name = "lubar"
+name = "lureng"
 version = "0.1.0"
 authors = ["Lucas David Traverso <lucas6246@gmail.com>"]
 
 [dependencies]
 unix_socket = "*"
-log = "*"
 docopt = "*"
+log = "*"
+env_logger = "*"
+yaml-rust = "*"

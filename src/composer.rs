@@ -9,7 +9,13 @@ const SEPARATOR: &'static str = " | ";
 
 pub fn composer (rx: Receiver<IdentifiedMessage<Action>>, bar: &str) {
     let mut vec: Vec<Widget> = Vec::with_capacity(16);
-    let child = Command::new(bar).stdin(Stdio::piped()).spawn().unwrap();
+    let child = Command::new("sh")
+        .arg("-c")
+        .arg(bar)
+        .stdin(Stdio::piped())
+        .spawn()
+        .unwrap();
+
     let mut out = child.stdin.unwrap();
     let mut acc = String::new();
 
@@ -51,6 +57,5 @@ pub fn composer (rx: Receiver<IdentifiedMessage<Action>>, bar: &str) {
         acc.push('\n');
         out.write(acc.as_bytes()).unwrap();
         out.flush().unwrap();
-        println!("Size: {}", vec.capacity());
     }
 }

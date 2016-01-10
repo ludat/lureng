@@ -8,35 +8,43 @@ use std::io::Read;
 use id_sender::*;
 use widget::{Action,Field};
 
+fn parse_input(input: &String) -> Result<Action, &'static str> {
+    if ! input.starts_with("\\") {
+        Ok(Action::Update(Field::Content(input.clone())))
+    } else {
+        let cmd: Vec<&str> = input.split_whitespace().collect();
+        match cmd.get(0) {
+            Some(&"\\prio") => {
+                let s = try!(cmd.get(1).ok_or("prio need two args"));
+                let i = try!((*s).parse::<u32>().map_err(
+                    |_| "Failed to parse prio value"));
+                Ok(Action::Update(Field::Priority(i)))
+            },
+            Some(&_) => Err("Command not found"),
+            None => Err("Failed to parse command"),
+        }
+    }
+}
+
 fn handle_client(stream: UnixStream, tx: IdentifiedSender<Action>) {
-    debug!("new connection");
+    println!("new connection");
     let mut input = String::new();
     let mut buf: [u8;4] = [0,0,0,0];
     let mut i = 0;
     for byte in (&stream).bytes() {
-        buf[i] = match byte {
-            Ok(b) => b,
-            Err(_) => panic!("Failed to read")
+        buf[i] = byte.unwrap_or_else(|e| {
+            tx.send(Action::Remove);
+            panic!("Couldn't read byte ({})", e)
+        });
+        let c = unsafe {
+            mem::transmute::<[u8; 4], u32>(buf)
         };
-        let c;
-        unsafe {
-            c = mem::transmute::<[u8; 4], u32>(buf);
-        }
         match char::from_u32(c) {
             Some('\n') => {
-                if ! input.starts_with("\\") {
-                    tx.send(Action::Update(Field::Content(input.clone()))).unwrap();
-                } else {
-                    let cmd: Vec<&str> = input.split_whitespace().collect();
-                    if cmd.get(0).unwrap() == &"\\prio" {
-                        match cmd.get(1).unwrap().parse::<u32>() {
-                            Ok(i) => {
-                                tx.send(Action::Update(Field::Priority(i))).unwrap();
-                            },
-                            Err(_) => {},
-                        }
-                    }
-                }
+                match parse_input(&input) {
+                    Ok(action) => {tx.send(action).unwrap();},
+                    Err(ref s) => {println!("Bad command {}", s);},
+                };
                 input.clear();
             },
             Some(new_char) => { input.push(new_char);},
@@ -44,7 +52,7 @@ fn handle_client(stream: UnixStream, tx: IdentifiedSender<Action>) {
         };
     }
     tx.send(Action::Remove).unwrap();
-    debug!("connection closed");
+    println!("connection closed");
 }
 
 pub fn listener(tx: Sender<IdentifiedMessage<Action>>) {

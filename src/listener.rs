@@ -14,11 +14,11 @@ fn parse_input(input: &String) -> Result<Action, &'static str> {
     } else {
         let cmd: Vec<&str> = input.split_whitespace().collect();
         match cmd.get(0) {
-            Some(&"\\prio") => {
-                let s = try!(cmd.get(1).ok_or("prio need two args"));
-                let i = try!((*s).parse::<u32>().map_err(
-                    |_| "Failed to parse prio value"));
-                Ok(Action::Update(Field::Priority(i)))
+            Some(&"\\up") => {
+                Ok(Action::Up)
+            },
+            Some(&"\\down") => {
+                Ok(Action::Down)
             },
             Some(&_) => Err("Command not found"),
             None => Err("Failed to parse command"),

@@ -5,9 +5,24 @@ use std::io::prelude::Write;
 use std::process::{Command,Stdio};
 use std::sync::mpsc::{Receiver};
 
-const SEPARATOR: &'static str = " | ";
+trait FindById {
+    fn find_by_id(&self, id: u32) -> Option<usize>;
+}
 
-pub fn composer (rx: Receiver<IdentifiedMessage<Action>>, bar: &str) {
+impl FindById for Vec<Widget> {
+    fn find_by_id(&self, id: u32) -> Option<usize> {
+        let mut index = 0;
+        for item in self {
+            if item.id == id {
+                return Some(index)
+            };
+            index += 1;
+        };
+        return None
+    }
+}
+
+pub fn composer (rx: Receiver<IdentifiedMessage<Action>>, bar: &str, separator: &str) {
     let mut vec: Vec<Widget> = Vec::with_capacity(16);
     let child = Command::new("sh")
         .arg("-c")
@@ -20,36 +35,38 @@ pub fn composer (rx: Receiver<IdentifiedMessage<Action>>, bar: &str) {
     let mut acc = String::new();
 
     for msg in rx {
+        let index = match vec.find_by_id(msg.id) {
+            Some(i) => i,
+            None => {
+                let new_widget = Widget::new(msg.id);
+                vec.push(new_widget);
+                vec.len() - 1
+            }
+        };
         match msg.data {
             Action::Remove => {
-                vec.retain(|w| w.id != msg.id);
+                vec.remove(index);
+            },
+            Action::Up => {
+                if index > 0 {
+                    vec.swap(index, index - 1)
+                }
+            },
+            Action::Down => {
+                if index < vec.len() - 1  {
+                    vec.swap(index, index + 1)
+                }
             },
             Action::Update(ref field) => {
-                let mut id_present = false;
-                for mut widget in vec.iter_mut() {
-                    if widget.id == msg.id {
-                        widget.update(field);
-                        id_present = true;
-                        break
-                    }
-                }
-
-                if ! id_present {
-                    let mut new_widget = Widget::new(msg.id);
-                    new_widget.update(field);
-                    vec.push(new_widget)
-                }
+                vec[index].update(field);
             }
         }
-
-        // sort vector by priority because I'm really lazy (optimization is the root of all evil)
-        vec.sort_by(|a, b| a.priority.cmp(&b.priority));
 
         acc.clear();
         for w in vec.iter() {
             if ! w.content.is_empty() {
                 if ! acc.is_empty() {
-                    acc.push_str(SEPARATOR)
+                    acc.push_str(separator)
                 }
                 acc.push_str(&w.content);
             }
@@ -57,5 +74,6 @@ pub fn composer (rx: Receiver<IdentifiedMessage<Action>>, bar: &str) {
         acc.push('\n');
         out.write(acc.as_bytes()).unwrap();
         out.flush().unwrap();
+        println!("Current vec: {:?}", vec);
     }
 }

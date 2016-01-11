@@ -1,15 +1,18 @@
+#[derive(Debug)]
 pub enum Field {
     Content(String),
-    Priority(u32),
 }
 
+#[derive(Debug)]
 pub enum Action {
     Remove,
+    Up,
+    Down,
     Update(Field),
 }
 
+#[derive(Debug)]
 pub struct Widget {
-    pub priority: u32,
     pub id: u32,
     pub content: String,
 }
@@ -19,14 +22,12 @@ impl Widget {
         Widget {
             id: id,
             content: String::new(),
-            priority: 1024,
         }
     }
 
     pub fn update(&mut self, field: &Field) {
-        match field {
-            &Field::Content(ref s) => {self.content = s.clone()},
-            &Field::Priority(p) => {self.priority = p},
+        match *field {
+            Field::Content(ref s) => {self.content = s.clone()},
         }
     }
 }

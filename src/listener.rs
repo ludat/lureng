@@ -55,8 +55,9 @@ fn handle_client(stream: UnixStream, tx: IdentifiedSender<Action>) {
     println!("connection closed");
 }
 
-pub fn listener(tx: Sender<IdentifiedMessage<Action>>) {
-    let listener = UnixListener::bind("socket").unwrap();
+pub fn listener(tx: Sender<IdentifiedMessage<Action>>, socket: String) {
+    let listener = UnixListener::bind(&socket).expect(
+        &format!("Couldn't create socket file ({})", &socket));
 
     // accept connections and process them, spawning a new thread for each one
     let mut id = 0;

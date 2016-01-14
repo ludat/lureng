@@ -1,17 +1,24 @@
-#![feature(plugin)]
-#![plugin(docopt_macros)]
 extern crate rustc_serialize;
 extern crate docopt;
 
-docopt!(Args, "
+use docopt::Docopt;
+
+const USAGE: &'static str =  "
 Usage: lureng [options] -c <cmd>
 
 Options:
     --separator <separator>  Separator between output arguments.
     --socket <socket>        Socket file path to listen to [Default: .lureng.sock].
     -f                       Remove socket file if it exists.
-", flag_separator: Option<String>
-);
+";
+
+#[derive(Debug, RustcDecodable)]
+struct Args {
+    flag_f: bool,
+    flag_socket: String,
+    flag_separator: Option<String>,
+    arg_cmd: String,
+}
 
 #[macro_use]
 extern crate unix_socket;
@@ -28,7 +35,9 @@ use std::thread;
 use std::sync::mpsc::channel;
 
 fn main() {
-    let args: Args = Args::docopt().decode().unwrap_or_else(|e| e.exit());
+    let args: Args = Docopt::new(USAGE)
+                            .and_then(|d| d.decode())
+                            .unwrap_or_else(|e| e.exit());
     let socket = args.flag_socket;
     if args.flag_f {
         std::fs::remove_file(&socket);
